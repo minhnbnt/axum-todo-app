@@ -8,6 +8,8 @@ use tokio::net::TcpListener;
 
 use tracing::info;
 
+mod todo_list;
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
 	let addr = "127.0.0.1:3000";
