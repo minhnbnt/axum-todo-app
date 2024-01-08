@@ -9,6 +9,11 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 mod todo_list;
+use todo_list::TodoListRouter;
+
+lazy_static::lazy_static! {
+	static ref TODO_LIST_ROUTER: TodoListRouter = TodoListRouter::new();
+}
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -17,6 +22,7 @@ async fn main() -> io::Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()
+		.merge(TODO_LIST_ROUTER.get_router())
 		.route("/", get(|| async { "Hello, World!" }))
 		.route("/hello2/:name", get(hello_with_name));
 
