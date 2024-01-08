@@ -1,7 +1,11 @@
+use rayon::prelude::*;
+
 use serde::Serialize;
 
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+use tokio::sync::RwLock;
 
 use tracing::error;
 
@@ -13,41 +17,35 @@ struct Task {
 }
 
 pub struct TodoList {
-	size: usize,
+	size: AtomicUsize,
 	list: RwLock<HashMap<usize, Task>>,
 }
 
-#[allow(dead_code)]
 impl TodoList {
-	fn new_task(&mut self, mut content: String) {
+	pub fn new_task(&self, mut content: String) {
+		let mut list = self.list.try_write().unwrap();
+
 		content.shrink_to_fit();
 
 		let task = Task {
-			id: self.size,
-			content: content.into(),
 			completed: false,
+			content: content.into(),
+			id: self.size.fetch_add(1, Ordering::SeqCst),
 		};
 
-		if let Ok(mut list) = self.list.write() {
-			list.insert(task.id, task);
-			self.size += 1;
-		}
+		list.insert(task.id, task);
 	}
 
-	fn remove_task(&mut self, id: usize) {
-		let Ok(mut list) = self.list.write() else {
-			return;
-		};
+	pub fn remove_task(&self, id: usize) {
+		let mut list = self.list.try_write().unwrap();
 
 		if list.remove(&id).is_none() {
 			error!("Failed to remove task with id: {}", id);
 		}
 	}
 
-	fn change_task(&mut self, mut content: String, id: usize) {
-		let Ok(mut list) = self.list.write() else {
-			return;
-		};
+	pub fn change_task(&self, id: usize, mut content: String) {
+		let mut list = self.list.try_write().unwrap();
 
 		content.shrink_to_fit();
 		if let Some(task) = list.get_mut(&id) {
@@ -56,29 +54,26 @@ impl TodoList {
 		}
 	}
 
-	fn mark_completed(&mut self, id: usize) {
-		let Ok(mut list) = self.list.write() else {
-			return;
-		};
+	pub fn mark_completed(&self, id: usize) {
+		let mut list = self.list.try_write().unwrap();
 
 		if let Some(task) = list.get_mut(&id) {
 			task.completed = true;
 		}
 	}
 
-	fn to_json(&self) -> Result<String, String> {
-		let Ok(list) = self.list.read() else {
-			return Err("Failed to read the database.".into());
-		};
+	pub fn get_tasks(&self) -> Result<String, serde_json::Error> {
+		let list = self.list.try_read().unwrap();
+		let mut tasks: Vec<&Task> = list.par_iter().map(|(_, task)| task).collect();
 
-		let tasks: Vec<&Task> = list.values().collect();
+		tasks.sort_by(|a, b| a.id.cmp(&b.id));
 
-		serde_json::to_string(&tasks).map_err(|e| format!("Failed to convert data to json: {}", e))
+		serde_json::to_string(&tasks)
 	}
 
 	pub fn new() -> Self {
 		TodoList {
-			size: 0,
+			size: AtomicUsize::new(0),
 			list: RwLock::new(HashMap::new()),
 		}
 	}
