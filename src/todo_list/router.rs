@@ -1,7 +1,7 @@
 use crate::todo_list::TodoList;
 
 use axum::http::StatusCode;
-use axum::routing::{delete, get, patch, post};
+use axum::routing::get;
 use axum::{Json, Router};
 
 use serde::Deserialize;
@@ -20,57 +20,44 @@ impl TodoListRouter {
 		}
 	}
 
-	fn new_task(&'static self) -> Router {
-		let function = move |Json(payload): Json<NewTaskPayload>| async move {
+	pub fn get_router(&'static self) -> Router {
+		let new_task_func = move |Json(payload): Json<NewTaskPayload>| async move {
 			debug!("New task: {}", payload.content);
 			self.todo_list.new_task(payload.content);
 			(StatusCode::CREATED, "Task created")
 		};
 
-		Router::new().route("/", post(function))
-	}
-
-	fn remove_task(&'static self) -> Router {
-		let function = move |Json(payload): Json<TaskIDPayload>| async move {
+		let remove_task_func = move |Json(payload): Json<TaskIDPayload>| async move {
 			debug!("Remove task: {}", payload.id);
 			self.todo_list.remove_task(payload.id);
+			(StatusCode::OK, "Task removed")
 		};
-		Router::new().route("/", delete(function))
-	}
 
-	fn change_task(&'static self) -> Router {
-		let function = move |Json(payload): Json<ChangeTaskPayload>| async move {
+		let change_task_func = move |Json(payload): Json<ChangeTaskPayload>| async move {
 			debug!("Change task: {}", payload.id);
 			self.todo_list.change_task(payload.id, payload.content);
+			(StatusCode::OK, "Task changed")
 		};
-		Router::new().route("/", patch(function))
-	}
 
-	fn mark_completed(&'static self) -> Router {
-		let function = move |Json(payload): Json<TaskIDPayload>| async move {
+		let mark_completed_func = move |Json(payload): Json<TaskIDPayload>| async move {
 			debug!("Mark completed: {}", payload.id);
 			self.todo_list.mark_completed(payload.id);
+			(StatusCode::OK, "Task marked completed")
 		};
-		Router::new().route("/", patch(function))
-	}
 
-	fn get_tasks(&'static self) -> Router {
+		let get_task_func = move || async move {
+			debug!("Get tasks");
+			self.todo_list.get_tasks().unwrap()
+		};
+
 		Router::new().route(
-			"/get_tasks",
-			get(|| async {
-				debug!("Get tasks");
-				self.todo_list.get_tasks().unwrap()
-			}),
+			"/",
+			get(get_task_func)
+				.post(new_task_func)
+				.patch(change_task_func)
+				.delete(remove_task_func)
+				.put(mark_completed_func),
 		)
-	}
-
-	pub fn get_router(&'static self) -> Router {
-		Router::new()
-			.merge(self.new_task())
-			.merge(self.get_tasks())
-			.merge(self.remove_task())
-			.merge(self.change_task())
-			.merge(self.mark_completed())
 	}
 }
 

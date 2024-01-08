@@ -22,7 +22,7 @@ async fn main() -> io::Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()
-		.merge(TODO_LIST_ROUTER.get_router())
+		.nest("/todo", TODO_LIST_ROUTER.get_router())
 		.route("/", get(|| async { "Hello, World!" }))
 		.route("/hello2/:name", get(hello_with_name));
 
