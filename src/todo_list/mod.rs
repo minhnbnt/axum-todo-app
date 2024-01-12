@@ -3,4 +3,4 @@ mod todolist;
 
 use todolist::TodoList;
 
-pub use router::TodoListRouter;
+pub use router::get_router;

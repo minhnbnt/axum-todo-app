@@ -1,74 +1,63 @@
 use crate::todo_list::TodoList;
 
+use axum::extract::{Json, Path, State};
 use axum::http::StatusCode;
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::response::IntoResponse;
+use axum::routing::{delete, get, patch, post};
+use axum::Router;
 
 use serde::Deserialize;
 
-use tracing::debug;
+use std::sync::Arc;
 
-pub struct TodoListRouter {
-	todo_list: TodoList,
+pub fn get_router() -> Router {
+	Router::new()
+		.route("/", post(new_task).put(change_task))
+		.route("/tasks", get(get_tasks))
+		.route("/delete/:id", delete(remove_task))
+		.route("/complete/:id", patch(mark_completed))
+		.with_state(Arc::new(TodoList::new()))
 }
 
-// todo: remove static lifetime
-impl TodoListRouter {
-	pub fn new() -> Self {
-		Self {
-			todo_list: TodoList::new(),
-		}
-	}
+async fn get_tasks(State(list): State<Arc<TodoList>>) -> impl IntoResponse {
+	(StatusCode::OK, list.get_tasks().unwrap())
+}
 
-	pub fn get_router(&'static self) -> Router {
-		let new_task_func = move |Json(payload): Json<NewTaskPayload>| async move {
-			debug!("New task: {}", payload.content);
-			self.todo_list.new_task(payload.content);
-			(StatusCode::CREATED, "Task created")
-		};
+async fn new_task(
+	State(list): State<Arc<TodoList>>,
+	Json(request): Json<NewTaskPayload>,
+) -> impl IntoResponse {
+	list.new_task(request.content);
+	(StatusCode::CREATED, "Task created")
+}
 
-		let remove_task_func = move |Json(payload): Json<TaskIDPayload>| async move {
-			debug!("Remove task: {}", payload.id);
-			self.todo_list.remove_task(payload.id);
-			(StatusCode::OK, "Task removed")
-		};
+async fn change_task(
+	State(list): State<Arc<TodoList>>,
+	Json(request): Json<ChangeTaskPayload>,
+) -> impl IntoResponse {
+	list.change_task(request.id, request.content);
+	(StatusCode::OK, "Task changed")
+}
 
-		let change_task_func = move |Json(payload): Json<ChangeTaskPayload>| async move {
-			debug!("Change task: {}", payload.id);
-			self.todo_list.change_task(payload.id, payload.content);
-			(StatusCode::OK, "Task changed")
-		};
+async fn remove_task(
+	Path(id): Path<usize>,
+	State(list): State<Arc<TodoList>>,
+) -> impl IntoResponse {
+	list.remove_task(id);
+	(StatusCode::OK, "Task removed")
+}
 
-		let mark_completed_func = move |Json(payload): Json<TaskIDPayload>| async move {
-			debug!("Mark completed: {}", payload.id);
-			self.todo_list.mark_completed(payload.id);
-			(StatusCode::OK, "Task marked completed")
-		};
-
-		let get_task_func = move || async move {
-			debug!("Get tasks");
-			self.todo_list.get_tasks().unwrap()
-		};
-
-		Router::new().route(
-			"/",
-			get(get_task_func)
-				.post(new_task_func)
-				.patch(change_task_func)
-				.delete(remove_task_func)
-				.put(mark_completed_func),
-		)
-	}
+async fn mark_completed(
+	Path(id): Path<usize>,
+	State(list): State<Arc<TodoList>>,
+) -> impl IntoResponse {
+	list.mark_completed(id);
+	(StatusCode::OK, "Task marked completed")
 }
 
 #[derive(Deserialize)]
 struct NewTaskPayload {
 	content: String,
-}
-
-#[derive(Deserialize)]
-struct TaskIDPayload {
-	id: usize,
 }
 
 #[derive(Deserialize)]
