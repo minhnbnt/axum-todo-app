@@ -1,3 +1,5 @@
+use anyhow::{bail, Result};
+
 use rayon::prelude::*;
 
 use serde::Serialize;
@@ -7,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tokio::sync::RwLock;
 
-use tracing::error;
+use super::list::TodoList;
 
 #[derive(Debug, Serialize)]
 struct Task {
@@ -16,14 +18,14 @@ struct Task {
 	content: Box<str>,
 }
 
-pub struct TodoList {
+pub struct RAMTodoList {
 	size: AtomicUsize,
 	list: RwLock<HashMap<usize, Task>>,
 }
 
-impl TodoList {
-	pub fn new_task(&self, mut content: String) {
-		let mut list = self.list.try_write().unwrap();
+impl TodoList for RAMTodoList {
+	fn new_task(&self, mut content: String) -> Result<()> {
+		let mut list = self.list.try_write()?;
 
 		content.shrink_to_fit();
 
@@ -34,45 +36,58 @@ impl TodoList {
 		};
 
 		list.insert(task.id, task);
+		Ok(())
 	}
 
-	pub fn remove_task(&self, id: usize) {
-		let mut list = self.list.try_write().unwrap();
+	fn remove_task(&self, id: usize) -> Result<()> {
+		let mut list = self.list.try_write()?;
 
 		if list.remove(&id).is_none() {
-			error!("Failed to remove task with id: {}", id);
+			bail!("Failed to remove task {0}: Task {0} not found.", id);
 		}
+
+		Ok(())
 	}
 
-	pub fn change_task(&self, id: usize, mut content: String) {
-		let mut list = self.list.try_write().unwrap();
+	fn change_task(&self, id: usize, mut content: String) -> Result<()> {
+		let mut list = self.list.try_write()?;
 
 		content.shrink_to_fit();
 		if let Some(task) = list.get_mut(&id) {
 			task.content = content.into();
 			task.completed = false;
+		} else {
+			bail!("Failed to rename task {0}: Task {0} not found.", id);
 		}
+
+		Ok(())
 	}
 
-	pub fn mark_completed(&self, id: usize) {
+	fn mark_completed(&self, id: usize) -> Result<()> {
 		let mut list = self.list.try_write().unwrap();
 
 		if let Some(task) = list.get_mut(&id) {
 			task.completed = true;
+		} else {
+			bail!("Failed to complete task {0}: Task {0} not found.", id);
 		}
+
+		Ok(())
 	}
 
-	pub fn get_tasks(&self) -> Result<String, serde_json::Error> {
+	fn get_tasks(&self) -> Result<String> {
 		let list = self.list.try_read().unwrap();
 		let mut tasks: Vec<&Task> = list.par_iter().map(|(_, task)| task).collect();
 
 		tasks.sort_by(|a, b| a.id.cmp(&b.id));
 
-		serde_json::to_string(&tasks)
+		Ok(serde_json::to_string(&tasks)?)
 	}
+}
 
+impl RAMTodoList {
 	pub fn new() -> Self {
-		TodoList {
+		RAMTodoList {
 			size: AtomicUsize::new(0),
 			list: RwLock::new(HashMap::new()),
 		}

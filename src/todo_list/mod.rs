@@ -1,6 +1,8 @@
+mod list;
+mod ramtodo;
 mod router;
-mod todolist;
 
-use todolist::TodoList;
+use list::TodoList;
+use ramtodo::RAMTodoList;
 
 pub use router::get_router;

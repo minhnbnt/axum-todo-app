@@ -1,58 +1,75 @@
-use crate::todo_list::TodoList;
+use axum::{
+	extract::{Json, Path, State},
+	http::{Method, StatusCode},
+	response::IntoResponse,
+	routing::{delete, get, patch, post},
+	Router,
+};
 
-use axum::extract::{Json, Path, State};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{delete, get, patch, post};
-use axum::Router;
+use crate::error::AppError;
 
 use serde::Deserialize;
 
 use std::sync::Arc;
 
+use super::{RAMTodoList, TodoList};
+
+use tower_http::cors::{Any, CorsLayer};
+
 pub fn get_router() -> Router {
+	let cors_layer = CorsLayer::new()
+		.allow_methods([
+			Method::DELETE,
+			Method::GET,
+			Method::PATCH,
+			Method::POST,
+			Method::PUT,
+		])
+		.allow_origin(Any);
+
 	Router::new()
 		.route("/", post(new_task).put(change_task))
 		.route("/tasks", get(get_tasks))
 		.route("/delete/:id", delete(remove_task))
 		.route("/complete/:id", patch(mark_completed))
-		.with_state(Arc::new(TodoList::new()))
+		.with_state(Arc::new(RAMTodoList::new()))
+		.layer(cors_layer)
 }
 
-async fn get_tasks(State(list): State<Arc<TodoList>>) -> impl IntoResponse {
-	(StatusCode::OK, list.get_tasks().unwrap())
+async fn get_tasks(State(list): State<Arc<impl TodoList>>) -> Result<impl IntoResponse, AppError> {
+	Ok((StatusCode::OK, list.get_tasks()?))
 }
 
 async fn new_task(
-	State(list): State<Arc<TodoList>>,
+	State(list): State<Arc<impl TodoList>>,
 	Json(request): Json<NewTaskPayload>,
-) -> impl IntoResponse {
-	list.new_task(request.content);
-	(StatusCode::CREATED, "Task created")
+) -> Result<impl IntoResponse, AppError> {
+	list.new_task(request.content)?;
+	Ok((StatusCode::CREATED, "Task created"))
 }
 
 async fn change_task(
-	State(list): State<Arc<TodoList>>,
+	State(list): State<Arc<impl TodoList>>,
 	Json(request): Json<ChangeTaskPayload>,
-) -> impl IntoResponse {
-	list.change_task(request.id, request.content);
-	(StatusCode::OK, "Task changed")
+) -> Result<impl IntoResponse, AppError> {
+	list.change_task(request.id, request.content)?;
+	Ok((StatusCode::OK, "Task changed"))
 }
 
 async fn remove_task(
 	Path(id): Path<usize>,
-	State(list): State<Arc<TodoList>>,
-) -> impl IntoResponse {
-	list.remove_task(id);
-	(StatusCode::OK, "Task removed")
+	State(list): State<Arc<impl TodoList>>,
+) -> Result<impl IntoResponse, AppError> {
+	list.remove_task(id)?;
+	Ok((StatusCode::OK, "Task removed"))
 }
 
 async fn mark_completed(
 	Path(id): Path<usize>,
-	State(list): State<Arc<TodoList>>,
-) -> impl IntoResponse {
-	list.mark_completed(id);
-	(StatusCode::OK, "Task marked completed")
+	State(list): State<Arc<impl TodoList>>,
+) -> Result<impl IntoResponse, AppError> {
+	list.mark_completed(id)?;
+	Ok((StatusCode::OK, "Task marked completed"))
 }
 
 #[derive(Deserialize)]
