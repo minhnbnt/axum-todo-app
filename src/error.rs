@@ -21,10 +21,3 @@ where
 		Self(err.into())
 	}
 }
-
-pub enum AppResult<T>
-where
-	T: IntoResponse, {
-	Ok(T),
-	Err(AppError),
-}

@@ -11,12 +11,14 @@ use tokio::net::TcpListener;
 
 use tracing::info;
 
+use todo_list::RAMTodoList;
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()
-		.nest("/todo", todo_list::get_router())
+		.nest("/todo", todo_list::get_router(RAMTodoList::new()))
 		.route("/", get(|| async { "Hello, World!" }))
 		.route("/hello2/:name", get(hello_with_name));
 

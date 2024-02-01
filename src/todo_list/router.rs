@@ -12,11 +12,13 @@ use serde::Deserialize;
 
 use std::sync::Arc;
 
-use super::{RAMTodoList, TodoList};
+use super::TodoList;
 
 use tower_http::cors::{Any, CorsLayer};
 
-pub fn get_router() -> Router {
+pub fn get_router<Backend>(backend: Backend) -> Router
+where
+	Backend: 'static + TodoList + Send + Sync, {
 	let cors_layer = CorsLayer::new()
 		.allow_methods([
 			Method::DELETE,
@@ -32,7 +34,7 @@ pub fn get_router() -> Router {
 		.route("/tasks", get(get_tasks))
 		.route("/delete/:id", delete(remove_task))
 		.route("/complete/:id", patch(mark_completed))
-		.with_state(Arc::new(RAMTodoList::new()))
+		.with_state(Arc::new(backend))
 		.layer(cors_layer)
 }
 
