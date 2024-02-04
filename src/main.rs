@@ -6,19 +6,18 @@ use axum::response::Html;
 use axum::routing::get;
 use axum::Router;
 
-use tokio::io;
 use tokio::net::TcpListener;
 
 use tracing::info;
 
-use todo_list::RAMTodoList;
+use crate::todo_list::Database;
 
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() -> anyhow::Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()
-		.nest("/todo", todo_list::get_router(RAMTodoList::new()))
+		.nest("/todo", todo_list::get_router(Database::new().await?))
 		.route("/", get(|| async { "Hello, World!" }))
 		.route("/hello2/:name", get(hello_with_name));
 

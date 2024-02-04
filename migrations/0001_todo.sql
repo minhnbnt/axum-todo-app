@@ -1,0 +1,6 @@
+CREATE TABLE Todo (
+	id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	completed BOOLEAN NOT NULL DEFAULT false,
+	description VARCHAR(256),
+	PRIMARY KEY (`id`)
+);
