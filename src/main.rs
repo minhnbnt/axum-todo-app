@@ -13,7 +13,7 @@ use tracing::info;
 use crate::todo_list::Database;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> crate::error::AppResult<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()

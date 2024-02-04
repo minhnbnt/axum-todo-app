@@ -1,7 +1,10 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-pub struct AppError(anyhow::Error);
+use std::error::Error;
+
+#[derive(Debug)]
+pub struct AppError(Box<dyn Error>);
 
 impl IntoResponse for AppError {
 	fn into_response(self) -> Response {
@@ -15,9 +18,11 @@ impl IntoResponse for AppError {
 
 impl<E> From<E> for AppError
 where
-	E: Into<anyhow::Error>,
+	E: 'static + Error,
 {
 	fn from(err: E) -> Self {
-		Self(err.into())
+		Self(Box::new(err))
 	}
 }
+
+pub type AppResult<T> = Result<T, AppError>;

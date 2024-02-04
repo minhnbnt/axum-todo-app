@@ -1,4 +1,4 @@
-use anyhow::{Ok, Result};
+use crate::error::AppResult;
 
 use axum::{async_trait, Json};
 
@@ -13,7 +13,7 @@ pub struct Database {
 }
 
 impl Database {
-	pub async fn new() -> Result<Self> {
+	pub async fn new() -> AppResult<Self> {
 		let url = env::var("DATABASE_URL")?;
 		let pool = MySqlPool::connect(&url).await?;
 
@@ -23,7 +23,7 @@ impl Database {
 
 #[async_trait]
 impl TodoList for Database {
-	async fn new_task(&self, content: String) -> Result<()> {
+	async fn new_task(&self, content: String) -> AppResult<()> {
 		sqlx::query!("INSERT INTO Todo (description) VALUES (?)", content)
 			.execute(&self.connection)
 			.await?;
@@ -31,7 +31,7 @@ impl TodoList for Database {
 		Ok(())
 	}
 
-	async fn get_tasks(&self) -> Result<Json<Vec<Task>>> {
+	async fn get_tasks(&self) -> AppResult<Json<Vec<Task>>> {
 		let tasks = sqlx::query_as::<_, Task>("SELECT * FROM Todo ORDER BY id")
 			.fetch_all(&self.connection)
 			.await?;
@@ -39,7 +39,7 @@ impl TodoList for Database {
 		Ok(Json(tasks))
 	}
 
-	async fn change_task(&self, id: u32, content: String) -> Result<()> {
+	async fn change_task(&self, id: u32, content: String) -> AppResult<()> {
 		sqlx::query("UPDATE Todo SET description=$1 WHERE id=$2")
 			.bind(content)
 			.bind(id)
@@ -48,7 +48,7 @@ impl TodoList for Database {
 
 		Ok(())
 	}
-	async fn mark_completed(&self, id: u32) -> Result<()> {
+	async fn mark_completed(&self, id: u32) -> AppResult<()> {
 		sqlx::query!("UPDATE Todo SET completed=true WHERE id=?", id)
 			.execute(&self.connection)
 			.await?;
@@ -56,7 +56,7 @@ impl TodoList for Database {
 		Ok(())
 	}
 
-	async fn remove_task(&self, id: u32) -> Result<()> {
+	async fn remove_task(&self, id: u32) -> AppResult<()> {
 		sqlx::query!("DELETE FROM Todo WHERE id=?", id)
 			.execute(&self.connection)
 			.await?;
