@@ -23,7 +23,7 @@ impl Database {
 
 #[async_trait]
 impl TodoList for Database {
-	async fn new_task(&self, content: String) -> AppResult<()> {
+	async fn new_task(&self, content: &str) -> AppResult<()> {
 		sqlx::query!("INSERT INTO Todo (description) VALUES (?)", content)
 			.execute(&self.connection)
 			.await?;
@@ -39,7 +39,7 @@ impl TodoList for Database {
 		Ok(Json(tasks))
 	}
 
-	async fn change_task(&self, id: u32, content: String) -> AppResult<()> {
+	async fn change_task(&self, id: u32, content: &str) -> AppResult<()> {
 		sqlx::query("UPDATE Todo SET description=$1 WHERE id=$2")
 			.bind(content)
 			.bind(id)

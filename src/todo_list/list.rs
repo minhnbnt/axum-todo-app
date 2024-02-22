@@ -15,11 +15,11 @@ pub struct Task {
 
 #[async_trait]
 pub trait TodoList {
-	async fn new_task(&self, content: String) -> AppResult<()>;
+	async fn new_task(&self, content: &str) -> AppResult<()>;
 
 	async fn get_tasks(&self) -> AppResult<Json<Vec<Task>>>;
 
-	async fn change_task(&self, id: u32, content: String) -> AppResult<()>;
+	async fn change_task(&self, id: u32, content: &str) -> AppResult<()>;
 
 	async fn mark_completed(&self, id: u32) -> AppResult<()>;
 

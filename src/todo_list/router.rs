@@ -54,39 +54,36 @@ where
 		.layer(service)
 }
 
-async fn get_tasks(State(list): State<Arc<impl TodoList>>) -> Result<impl IntoResponse> {
+async fn get_tasks(list: State<Arc<impl TodoList>>) -> Result<impl IntoResponse> {
 	Ok((StatusCode::OK, list.get_tasks().await?))
 }
 
 async fn new_task(
-	State(list): State<Arc<impl TodoList>>,
-	Json(request): Json<NewTaskPayload>,
+	list: State<Arc<impl TodoList>>,
+	request: Json<NewTaskPayload>,
 ) -> Result<impl IntoResponse> {
-	list.new_task(request.content).await?;
+	list.new_task(&request.content).await?;
 	Ok((StatusCode::CREATED, "Task created"))
 }
 
 async fn change_task(
-	State(list): State<Arc<impl TodoList>>,
-	Json(request): Json<ChangeTaskPayload>,
+	list: State<Arc<impl TodoList>>,
+	request: Json<ChangeTaskPayload>,
 ) -> Result<impl IntoResponse> {
-	list.change_task(request.id, request.content).await?;
+	list.change_task(request.id, &request.content).await?;
 	Ok((StatusCode::OK, "Task changed"))
 }
 
-async fn remove_task(
-	Path(id): Path<u32>,
-	State(list): State<Arc<impl TodoList>>,
-) -> Result<impl IntoResponse> {
-	list.remove_task(id).await?;
+async fn remove_task(id: Path<u32>, list: State<Arc<impl TodoList>>) -> Result<impl IntoResponse> {
+	list.remove_task(*id).await?;
 	Ok((StatusCode::OK, "Task removed"))
 }
 
 async fn mark_completed(
-	Path(id): Path<u32>,
-	State(list): State<Arc<impl TodoList>>,
+	id: Path<u32>,
+	list: State<Arc<impl TodoList>>,
 ) -> Result<impl IntoResponse> {
-	list.mark_completed(id).await?;
+	list.mark_completed(*id).await?;
 	Ok((StatusCode::OK, "Task marked completed"))
 }
 
