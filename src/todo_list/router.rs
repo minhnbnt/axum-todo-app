@@ -1,6 +1,6 @@
 use axum::{
 	extract::{Json, Path, State},
-	http::{Method, StatusCode},
+	http::{header::CONTENT_TYPE, Method, StatusCode},
 	response::IntoResponse,
 	routing::{delete, get, patch, post},
 	Router,
@@ -20,6 +20,7 @@ pub fn get_router<Backend>(backend: Backend) -> Router
 where
 	Backend: 'static + TodoList + Send + Sync, {
 	let cors_layer = CorsLayer::new()
+		.allow_headers([CONTENT_TYPE])
 		.allow_methods([
 			Method::DELETE,
 			Method::GET,
