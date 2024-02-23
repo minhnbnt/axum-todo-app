@@ -1,4 +1,3 @@
-mod error;
 mod todo_list;
 
 use axum::extract::Path;
@@ -13,7 +12,7 @@ use tracing::info;
 use crate::todo_list::Database;
 
 #[tokio::main]
-async fn main() -> crate::error::AppResult<()> {
+async fn main() -> anyhow::Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let app = Router::new()
@@ -29,6 +28,6 @@ async fn main() -> crate::error::AppResult<()> {
 	Ok(())
 }
 
-async fn hello_with_name(Path(name): Path<String>) -> Html<String> {
-	Html(format!("Hello, <b>{}</b>!", name))
+async fn hello_with_name(name: Path<String>) -> Html<String> {
+	Html(format!("Hello, <b>{}</b>!", name.0))
 }
